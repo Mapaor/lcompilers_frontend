@@ -4,6 +4,7 @@ import TextBox, { type SourceFile } from "../components/TextBox";
 import ResultBox from "../components/ResultBox";
 import LoadLFortran, { type LFortranFunctions, type NotificationCallback } from "../components/LoadLFortran";
 import preinstalled_programs from "../utils/preinstalled_programs";
+import { combineFortranFiles, hasUnsupportedDataReads } from "../utils/compileFiles";
 import { useIsMobile } from "../components/useIsMobile";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -46,9 +47,6 @@ export default function Home() {
     const [files, setFiles] = useState<SourceFile[]>([{ id: "file-0", name: "main.f90", code: "" }]);
     const [activeFileId, setActiveFileId] = useState("file-0");
     const nextFileId = useRef(1);
-    const activeFile = files.find((file) => file.id === activeFileId) ?? files[0];
-    const sourceCode = activeFile.code;
-
     const setSourceCode = useCallback((code: string) => {
         setFiles((current) => current.map((file) =>
             file.id === activeFileId ? { ...file, code } : file
@@ -163,9 +161,22 @@ export default function Home() {
     }, [setInitialSourceCode]);
 
     const handleUserTabChange = useCallback(async (key: string) => {
+        let sourceCode: string;
+        try {
+            sourceCode = combineFortranFiles(files);
+        } catch (error) {
+            setOutput(String(error));
+            setActiveTab(key);
+            return;
+        }
+        if (!sourceCode) {
+            setOutput("No Fortran source files to compile");
+            setActiveTab(key);
+            return;
+        }
         if (key == "STDOUT") {
-            if(sourceCode.trim() === ""){
-                setOutput("No Source Code to compile");
+            if (hasUnsupportedDataReads(files, sourceCode)) {
+                setOutput("Reading workspace data files is not supported by this WASM compiler yet. The compiler filesystem and the generated program's filesystem are separate.");
                 setActiveTab(key);
                 return;
             }
@@ -216,7 +227,7 @@ export default function Home() {
             setOutput("Unknown key: " + key);
         }
         setActiveTab(key);
-    }, [sourceCode]);
+    }, [files]);
 
     useEffect(() => {
         // URL-based initialization requires the hydrated browser environment.
