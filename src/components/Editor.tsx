@@ -11,12 +11,14 @@ import "ace-builds/src-noconflict/ext-language_tools";
 interface EditorProps {
     sourceCode: string;
     setSourceCode: (code: string) => void;
+    fileName: string;
 }
 
-function Editor({ sourceCode, setSourceCode }: EditorProps) {
+function Editor({ sourceCode, setSourceCode, fileName }: EditorProps) {
+    const mode = fileName.toLowerCase().endsWith(".f90") ? "fortran" : "text";
     return (
         <AceEditor
-            mode="fortran"
+            mode={mode}
             theme="monokai"
             onChange={(code: string) => setSourceCode(code)}
             name="UNIQUE_ID_OF_DIV"
