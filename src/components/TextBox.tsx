@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Tabs, Dropdown, Space, Input, Modal, type MenuProps } from "antd";
-import { DownOutlined, PlayCircleOutlined, EditOutlined } from "@ant-design/icons";
+import { DownOutlined, PlayCircleOutlined, EditOutlined, FileTextOutlined } from "@ant-design/icons";
 import { useIsMobile } from "./useIsMobile";
 import { useState, type MouseEvent } from "react";
 import preinstalled_programs from "../utils/preinstalled_programs";
@@ -16,6 +16,8 @@ export interface SourceFile {
     code: string;
 }
 
+type PreinstalledExample = string | Record<string, string>;
+
 interface TextBoxProps {
     disabled: boolean;
     files: SourceFile[];
@@ -25,12 +27,13 @@ interface TextBoxProps {
     onSelectFile: (id: string) => void;
     onRemoveFile: (id: string) => void;
     onRenameFile: (id: string, name: string) => void;
+    onLoadExample: (files: Array<{ name: string; code: string }>) => void;
     activeTab: string;
     handleUserTabChange: (key: string) => Promise<void>;
     myHeight: string;
 }
 
-function TextBox({ disabled, files, activeFileId, setSourceCode, onAddFile, onSelectFile, onRemoveFile, onRenameFile, activeTab, handleUserTabChange, myHeight }: TextBoxProps) {
+function TextBox({ disabled, files, activeFileId, setSourceCode, onAddFile, onSelectFile, onRemoveFile, onRenameFile, onLoadExample, activeTab, handleUserTabChange, myHeight }: TextBoxProps) {
     const isMobile = useIsMobile();
     const [renaming, setRenaming] = useState(false);
     const [fileName, setFileName] = useState("");
@@ -53,15 +56,13 @@ function TextBox({ disabled, files, activeFileId, setSourceCode, onAddFile, onSe
         for (const example of Object.keys(preinstalled_programs[category])) {
             category_examples.push({
                 key: example,
-                label: example,
+                label: example.replaceAll("_", " "),
                 onClick: () => {
-                    setSourceCode(preinstalled_programs[category][example as keyof (typeof preinstalled_programs)[typeof category]]);
-                    let name = `${example}.f90`;
-                    let suffix = 2;
-                    while (files.some((file) => file.id !== activeFileId && file.name.toLowerCase() === name.toLowerCase())) {
-                        name = `${example}-${suffix++}.f90`;
-                    }
-                    onRenameFile(activeFileId, name);
+                    const selectedExample = preinstalled_programs[category][example as keyof (typeof preinstalled_programs)[typeof category]] as PreinstalledExample;
+                    const exampleFiles = typeof selectedExample === "string"
+                        ? [{ name: `${example}.f90`, code: selectedExample }]
+                        : Object.entries(selectedExample).map(([name, code]) => ({ name, code }));
+                    onLoadExample(exampleFiles);
                 }
             });
         }
@@ -107,10 +108,11 @@ function TextBox({ disabled, files, activeFileId, setSourceCode, onAddFile, onSe
     const tabItems = files.map((file) => ({
         key: file.id,
         label: file.name,
+        icon: !/\.(f|for|f77|f90|f95|f03|f08)$/i.test(file.name) ? <FileTextOutlined /> : undefined,
         closable: files.length > 1,
         children: file.id === activeFileId ? (
             <div style={{ height: myHeight }}>
-                <Editor key={file.id} sourceCode={file.code} setSourceCode={setSourceCode} />
+                <Editor key={file.id} sourceCode={file.code} setSourceCode={setSourceCode} fileName={file.name} />
             </div>
         ) : null,
     }));

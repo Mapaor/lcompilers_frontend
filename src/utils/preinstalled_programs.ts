@@ -62,6 +62,54 @@ end program`,
     print *, "Done."
 end program mandelbrot`
     },
+    "multi-file": {
+        read_data_dat: {
+            "main.f90": `program read_data_dat
+    implicit none
+    integer :: unit, first_value, second_value
+
+    open(newunit=unit, file="numbers.dat", status="old", action="read")
+    read(unit, *) first_value, second_value
+    close(unit)
+
+    print *, "Values from numbers.dat:", first_value, second_value
+end program read_data_dat`,
+            "numbers.dat": `12 30
+`,
+        },
+        read_data_txt: {
+            "main.f90": `program read_data_txt
+    implicit none
+    integer :: unit, item_count
+    real :: temperature
+    character(len=20) :: city
+
+    open(newunit=unit, file="weather.txt", status="old", action="read")
+    read(unit, *) city, item_count, temperature
+    close(unit)
+
+    print *, trim(city), " items:", item_count, " temperature:", temperature
+end program read_data_txt`,
+            "weather.txt": `Oslo 4 8.5
+`,
+        },
+        module_program: {
+            "main.f90": `program use_greeter
+    use greeter_module, only: greet
+    implicit none
+
+    call greet("Fortran")
+end program use_greeter`,
+            "greeter.f90": `module greeter_module
+    implicit none
+contains
+    subroutine greet(name)
+        character(len=*), intent(in) :: name
+        print *, "Hello, ", name, "!"
+    end subroutine greet
+end module greeter_module`,
+        },
+    },
     experimental: {
         template_add: `module template_add_01_m
     implicit none

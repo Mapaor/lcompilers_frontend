@@ -90,6 +90,18 @@ export default function Home() {
     const renameFile = (id: string, name: string) => {
         setFiles((current) => current.map((file) => file.id === id ? { ...file, name } : file));
     };
+
+    const loadExample = (exampleFiles: Array<{ name: string; code: string }>) => {
+        const newFiles = exampleFiles.map((file) => ({
+            ...file,
+            id: `file-${nextFileId.current++}`,
+        }));
+        const mainFile = newFiles.find((file) => file.name.toLowerCase() === "main.f90") ?? newFiles[0];
+        setFiles(newFiles);
+        setActiveFileId(mainFile.id);
+        setOutput("");
+    };
+
     const [activeTab, setActiveTab] = useState("STDOUT");
     const [output, setOutput] = useState("");
     const [dataFetch, setDataFetch] = useState(false);
@@ -239,6 +251,7 @@ export default function Home() {
                         onSelectFile={selectFile}
                         onRemoveFile={removeFile}
                         onRenameFile={renameFile}
+                        onLoadExample={loadExample}
                         activeTab={activeTab}
                         handleUserTabChange={handleUserTabChange}
                         myHeight={myHeight}
