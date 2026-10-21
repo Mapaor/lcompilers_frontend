@@ -1,4 +1,4 @@
-function remove_ansi_escape_seq(text) {
+function remove_ansi_escape_seq(text: string) {
     return text.replace(/(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]/g, "");
 }
 

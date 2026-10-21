@@ -1,11 +1,13 @@
-import { useEffect } from "react";
+"use client";
+
+import { useEffect, type ReactNode } from "react";
 
 import MyHeader from "./MyHeader";
 import MyFooter from "./MyFooter";
 import { Layout } from "antd";
 import { Content } from "antd/lib/layout/layout";
 
-function MyLayout({ children }) {
+function MyLayout({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         let script = document.createElement("script");
@@ -16,7 +18,7 @@ function MyLayout({ children }) {
         return () => {
             document.body.removeChild(script);
         }
-    });
+    }, []);
 
     return (
         <Layout style={{backgroundColor: "inherit"}}>

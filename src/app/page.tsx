@@ -1,16 +1,18 @@
+"use client";
+
 import TextBox from "../components/TextBox";
 import ResultBox from "../components/ResultBox";
-import LoadLFortran from "../components/LoadLFortran";
+import LoadLFortran, { type LFortranFunctions, type NotificationCallback } from "../components/LoadLFortran";
 import preinstalled_programs from "../utils/preinstalled_programs";
 import { useIsMobile } from "../components/useIsMobile";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Col, Row, Spin } from "antd";
 import { notification } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 import AnsiUp from "ansi_up";
 
-var ansi_up = new AnsiUp();
+const ansi_up = new AnsiUp();
 
 const antIcon = (
     <LoadingOutlined
@@ -21,14 +23,14 @@ const antIcon = (
     />
 );
 
-const openNotification = (msg, placement) => {
+const openNotification: NotificationCallback = (message, placement) => {
     notification.info({
-        message: msg,
-        placement,
+        message,
+        placement: placement as "top" | "topLeft" | "topRight" | "bottom" | "bottomLeft" | "bottomRight",
     });
 };
 
-var lfortran_funcs = {
+const lfortran_funcs: LFortranFunctions = {
     emit_ast_from_source: null,
     emit_asr_from_source: null,
     emit_wat_from_source: null,
@@ -47,28 +49,20 @@ export default function Home() {
     const [output, setOutput] = useState("");
     const [dataFetch, setDataFetch] = useState(false);
     const isMobile = useIsMobile();
+    const hasAutoRun = useRef(false);
 
     const myHeight = ((!isMobile) ? "calc(100vh - 170px)" : "calc(50vh - 85px)");
 
-    useEffect(() => {
-        setSourceCode("");
-        fetchData();
-    }, []);
 
-    useEffect(() => {
-        if(moduleReady && dataFetch) {
-            handleUserTabChange("STDOUT");
-        }
-    }, [moduleReady, dataFetch]);
-
-    async function fetchData() {
+    const fetchData = useCallback(async () => {
         const url = window.location.search;
         const gist = "https://gist.githubusercontent.com/";
         const github = "https://raw.githubusercontent.com/";
         const urlParams = new URLSearchParams(url);
 
-        if (urlParams.get("code")) {
-            setSourceCode(decodeURIComponent(urlParams.get("code")));
+        const code = urlParams.get("code");
+        if (code) {
+            setSourceCode(decodeURIComponent(code));
             setDataFetch(true);
         } else if (urlParams.get("github")) {
             const rawUrl = github + urlParams.get("github");
@@ -109,9 +103,9 @@ export default function Home() {
                 openNotification("The URL contains an invalid parameter.", "bottomRight");
             }
         }
-    }
+    }, []);
 
-    async function handleUserTabChange(key) {
+    const handleUserTabChange = useCallback(async (key: string) => {
         if (key == "STDOUT") {
             if(sourceCode.trim() === ""){
                 setOutput("No Source Code to compile");
@@ -119,42 +113,42 @@ export default function Home() {
                 return;
             }
             const start_compile = performance.now();
-            const wasm_bytes_response = lfortran_funcs.compile_code(sourceCode);
+            const wasm_bytes_response = lfortran_funcs.compile_code!(sourceCode);
             const end_compile = performance.now();
             const duration_compile = end_compile - start_compile;
-            sessionStorage.setItem("duration_compile", duration_compile);
+            sessionStorage.setItem("duration_compile", String(duration_compile));
             if (wasm_bytes_response) {
                 const [exit_code, ...compile_result] = wasm_bytes_response.split(",");
                 if (exit_code !== "0") {
                      // print compile-time error found by lfortran to output
-                    setOutput(ansi_up.ansi_to_html(compile_result) + `\nCompilation Time: ${duration_compile} ms`);
+                    setOutput(ansi_up.ansi_to_html(compile_result.join(",")) + `\nCompilation Time: ${duration_compile} ms`);
                 }
                 else {
-                    var stdout = [];
-                    const exec_res = await lfortran_funcs.execute_code(
-                        new Uint8Array(compile_result),
-                        (text) => stdout.push(text)
+                    const stdout: string[] = [];
+                    await lfortran_funcs.execute_code!(
+                        new Uint8Array(compile_result.map(Number)),
+                        (text: string) => stdout.push(text)
                     );
                     setOutput(stdout.join(""));
                 }
             }
         } else if (key == "AST") {
-            const res = lfortran_funcs.emit_ast_from_source(sourceCode);
+            const res = lfortran_funcs.emit_ast_from_source!(sourceCode);
             if (res) {
                 setOutput(ansi_up.ansi_to_html(res));
             }
         } else if (key == "ASR") {
-            const res = lfortran_funcs.emit_asr_from_source(sourceCode);
+            const res = lfortran_funcs.emit_asr_from_source!(sourceCode);
             if (res) {
                 setOutput(ansi_up.ansi_to_html(res));
             }
         } else if (key == "WAT") {
-            const res = lfortran_funcs.emit_wat_from_source(sourceCode);
+            const res = lfortran_funcs.emit_wat_from_source!(sourceCode);
             if (res) {
                 setOutput(ansi_up.ansi_to_html(res));
             }
         } else if (key == "CPP") {
-            const res = lfortran_funcs.emit_cpp_from_source(sourceCode);
+            const res = lfortran_funcs.emit_cpp_from_source!(sourceCode);
             if (res) {
                 setOutput(ansi_up.ansi_to_html(res));
             }
@@ -165,12 +159,24 @@ export default function Home() {
             setOutput("Unknown key: " + key);
         }
         setActiveTab(key);
-    }
+    }, [sourceCode]);
+
+    useEffect(() => {
+        // URL-based initialization requires the hydrated browser environment.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        fetchData();
+    }, [fetchData]);
+
+    useEffect(() => {
+        if (moduleReady && dataFetch && !hasAutoRun.current) {
+            hasAutoRun.current = true;
+            handleUserTabChange("STDOUT");
+        }
+    }, [moduleReady, dataFetch, handleUserTabChange]);
 
     return (
         <>
             <LoadLFortran
-                moduleReady={moduleReady}
                 setModuleReady={setModuleReady}
                 lfortran_funcs={lfortran_funcs}
                 openNotification={openNotification}

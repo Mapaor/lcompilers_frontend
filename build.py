@@ -15,7 +15,7 @@ def download_lfortran_file(commit, filename):
     base_url = "https://lfortran.github.io/wasm_builds"
     run_cmd(f'curl "{base_url}/{commit["build_type"]}/{commit["id"]}/{filename}" -o public/{filename}')
 
-commit = json.load(open("utils/commit.json"))
+commit = json.load(open("src/utils/commit.json"))
 
 download_lfortran_file(commit, "lfortran.js")
 download_lfortran_file(commit, "lfortran.wasm")

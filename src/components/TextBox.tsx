@@ -1,15 +1,27 @@
-import { Button, Tabs, Dropdown, Menu, Space } from "antd"; 
-const { TabPane } = Tabs;
+"use client";
+
+import { Button, Tabs, Dropdown, Space, type MenuProps } from "antd";
 import { DownOutlined, PlayCircleOutlined,FullscreenOutlined,FullscreenExitOutlined} from "@ant-design/icons";
 import { useIsMobile } from "./useIsMobile";
-import React, { useState, useEffect } from 'react'; 
+import { useState, useEffect, type Dispatch, type SetStateAction, type MouseEvent } from "react";
 import preinstalled_programs from "../utils/preinstalled_programs";
 import dynamic from 'next/dynamic'
-const Editor = dynamic(import('./Editor'), {
+const Editor = dynamic(() => import('./Editor'), {
   ssr: false
 })
 
-function TextBox({ disabled, sourceCode, setSourceCode, exampleName, setExampleName, activeTab, handleUserTabChange, myHeight }) {
+interface TextBoxProps {
+    disabled: boolean;
+    sourceCode: string;
+    setSourceCode: Dispatch<SetStateAction<string>>;
+    exampleName: string;
+    setExampleName: Dispatch<SetStateAction<string>>;
+    activeTab: string;
+    handleUserTabChange: (key: string) => Promise<void>;
+    myHeight: string;
+}
+
+function TextBox({ disabled, sourceCode, setSourceCode, exampleName, setExampleName, activeTab, handleUserTabChange, myHeight }: TextBoxProps) {
     const isMobile = useIsMobile(); 
     const [isFullScreen, setIsFullScreen] = useState(false);
 
@@ -28,15 +40,15 @@ function TextBox({ disabled, sourceCode, setSourceCode, exampleName, setExampleN
         }
     };
 
-    var menu_items = [];
-    for (let category in preinstalled_programs) {
-        var category_examples = []
-        for (let example in preinstalled_programs[category]) {
+    const menu_items: MenuProps["items"] = [];
+    for (const category of Object.keys(preinstalled_programs) as Array<keyof typeof preinstalled_programs>) {
+        const category_examples: NonNullable<MenuProps["items"]> = [];
+        for (const example of Object.keys(preinstalled_programs[category])) {
             category_examples.push({
                 key: example,
                 label: example,
                 onClick: () => {
-                    setSourceCode(preinstalled_programs[category][example]);
+                    setSourceCode(preinstalled_programs[category][example as keyof (typeof preinstalled_programs)[typeof category]]);
                     setExampleName(example);
                 }
             });
@@ -49,7 +61,7 @@ function TextBox({ disabled, sourceCode, setSourceCode, exampleName, setExampleN
         });
     }
 
-    const examples_menu = (<Menu items={menu_items}></Menu>);
+
     const extraOperations = {
         right: (
             <Space>
@@ -71,7 +83,7 @@ function TextBox({ disabled, sourceCode, setSourceCode, exampleName, setExampleN
         ),
         left: (
             <Dropdown menu={{ items: menu_items }} trigger={["hover"]}>
-                <a onClick={(e) => e.preventDefault()}>
+                <a onClick={(e: MouseEvent<HTMLAnchorElement>) => e.preventDefault()}>
                     <Space style={{ marginRight: "10px" }}>
                         {!isMobile && "Examples"} <DownOutlined />
                     </Space>

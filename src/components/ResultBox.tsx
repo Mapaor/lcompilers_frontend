@@ -1,17 +1,28 @@
-import React, { useState } from 'react';
+"use client";
+
+import { useState, type MouseEvent } from "react";
+import type { NotificationCallback } from "./LoadLFortran";
 import { useIsMobile } from "./useIsMobile";
 import { Button } from "antd";
 import { CopyOutlined } from "@ant-design/icons";
 import { Segmented } from "antd";
 
-function ResultBox({ activeTab, output, handleUserTabChange, myHeight, openNotification }) {
+interface ResultBoxProps {
+    activeTab: string;
+    output: string;
+    handleUserTabChange: (key: string) => Promise<void>;
+    myHeight: string;
+    openNotification: NotificationCallback;
+}
+
+function ResultBox({ activeTab, output, handleUserTabChange, myHeight, openNotification }: ResultBoxProps) {
     const isMobile = useIsMobile();
     const [showCopy, setShowCopy] = useState(false);
-    function copyTextToClipboard(e) {
+    function copyTextToClipboard(e: MouseEvent<HTMLButtonElement>) {
         e.stopPropagation(); // Prevents the click from reaching the container below
         const parser = new DOMParser();
         const doc = parser.parseFromString(output, 'text/html');
-        navigator.clipboard.writeText(doc.documentElement.textContent);
+        navigator.clipboard.writeText(doc.documentElement.textContent ?? "");
         openNotification(`${activeTab} output copied`, "bottomRight");
         setShowCopy(false); // Hide the icon after the user copies the text
     }
@@ -25,7 +36,7 @@ function ResultBox({ activeTab, output, handleUserTabChange, myHeight, openNotif
                 style={{ margin: "6px 0px 22px 0px" }}
                 options={["STDOUT", "AST", "ASR", "WAT", "CPP", "PY"]}
                 value={activeTab}
-                onChange={(key) => handleUserTabChange(key)}
+                onChange={(key) => handleUserTabChange(String(key))}
             />
             <Button 
                 onClick={copyTextToClipboard}  
