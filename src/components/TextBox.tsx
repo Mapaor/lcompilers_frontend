@@ -1,9 +1,9 @@
 "use client";
 
 import { Button, Tabs, Dropdown, Space, Input, Modal, type MenuProps } from "antd";
-import { DownOutlined, PlayCircleOutlined, FullscreenOutlined, FullscreenExitOutlined, EditOutlined } from "@ant-design/icons";
+import { DownOutlined, PlayCircleOutlined, EditOutlined } from "@ant-design/icons";
 import { useIsMobile } from "./useIsMobile";
-import { useState, useEffect, type MouseEvent } from "react";
+import { useState, type MouseEvent } from "react";
 import preinstalled_programs from "../utils/preinstalled_programs";
 import dynamic from 'next/dynamic'
 const Editor = dynamic(() => import('./Editor'), {
@@ -31,8 +31,7 @@ interface TextBoxProps {
 }
 
 function TextBox({ disabled, files, activeFileId, setSourceCode, onAddFile, onSelectFile, onRemoveFile, onRenameFile, activeTab, handleUserTabChange, myHeight }: TextBoxProps) {
-    const isMobile = useIsMobile(); 
-    const [isFullScreen, setIsFullScreen] = useState(false);
+    const isMobile = useIsMobile();
     const [renaming, setRenaming] = useState(false);
     const [fileName, setFileName] = useState("");
     const activeFile = files.find((file) => file.id === activeFileId) ?? files[0];
@@ -47,20 +46,6 @@ function TextBox({ disabled, files, activeFileId, setSourceCode, onAddFile, onSe
         setRenaming(false);
     };
 
-    // Listen for fullscreen changes (Esc key, browser buttons, etc.)
-    useEffect(() => {
-        const handler = () => setIsFullScreen(!!document.fullscreenElement);
-        document.addEventListener("fullscreenchange", handler);
-        return () => document.removeEventListener("fullscreenchange", handler);
-    }, []);
-
-    const handleFullScreen = () => {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen();
-        } else {
-            document.exitFullscreen();
-        }
-    };
 
     const menu_items: MenuProps["items"] = [];
     for (const category of Object.keys(preinstalled_programs) as Array<keyof typeof preinstalled_programs>) {
@@ -92,13 +77,7 @@ function TextBox({ disabled, files, activeFileId, setSourceCode, onAddFile, onSe
     const extraOperations = {
         right: (
             <Space>
-                <Button 
-                    onClick={handleFullScreen} 
-                    icon={isFullScreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
-                >
-                    {/* Now both text options only show on desktop, keeping mobile clean */}
-                    {!isMobile && (isFullScreen ? " Exit Fullscreen" : " Fullscreen")}
-                </Button>
+
                 <Button
                     title="Rename active file"
                     aria-label="Rename active file"
@@ -110,9 +89,8 @@ function TextBox({ disabled, files, activeFileId, setSourceCode, onAddFile, onSe
                     onClick={() => handleUserTabChange(activeTab)}
                     icon={<PlayCircleOutlined />}
                     title="Run the active file only"
-                > 
-                    {isMobile ? "Run" : "Run active file"}
-                </Button>
+                    aria-label="Run the active file"
+                />
             </Space>
         ),
         left: (
