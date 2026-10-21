@@ -5,7 +5,6 @@ import { useEffect, type ReactNode } from "react";
 import MyHeader from "./MyHeader";
 import MyFooter from "./MyFooter";
 import { Layout } from "antd";
-import { Content } from "antd/lib/layout/layout";
 
 function MyLayout({ children }: { children: ReactNode }) {
 
@@ -23,9 +22,9 @@ function MyLayout({ children }: { children: ReactNode }) {
     return (
         <Layout style={{backgroundColor: "inherit"}}>
             <MyHeader></MyHeader>
-            <Content style={{ padding: "10px 20px" }}>
+            <Layout.Content style={{ padding: "10px 20px" }}>
                 {children}
-            </Content>
+            </Layout.Content>
             <MyFooter></MyFooter>
         </Layout>
     );

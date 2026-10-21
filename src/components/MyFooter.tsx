@@ -1,9 +1,9 @@
-import { Footer } from "antd/lib/layout/layout";
+import { Layout } from "antd";
 import commit from "../utils/commit.json"
 
 function MyFooter() {
     return (
-        <Footer
+        <Layout.Footer
             style={{
                 backgroundColor: "#001529",
                 color: "#fff",
@@ -16,7 +16,7 @@ function MyFooter() {
             <a href="https://lcompilers.org/">LCompilers</a> | &nbsp;
             <a href="https://github.com/lfortran/lcompilers_frontend">Contribute</a> |&nbsp;
             <a href="https://github.com/lfortran/lcompilers_frontend/issues">Report Issues</a>
-        </Footer>
+        </Layout.Footer>
     );
 }
 

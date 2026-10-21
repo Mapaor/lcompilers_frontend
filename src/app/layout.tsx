@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import "antd/dist/antd.css";
+import "antd/dist/reset.css";
 import "../styles/globals.css";
 
 import MyLayout from "../components/MyLayout";

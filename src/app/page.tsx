@@ -25,7 +25,7 @@ const antIcon = (
 
 const openNotification: NotificationCallback = (message, placement) => {
     notification.info({
-        message,
+        title: message,
         placement: placement as "top" | "topLeft" | "topRight" | "bottom" | "bottomLeft" | "bottomRight",
     });
 };

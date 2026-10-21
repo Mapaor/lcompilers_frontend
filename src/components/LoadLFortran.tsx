@@ -271,9 +271,12 @@ async function setupLFortranFunctions(
         const exitCode: ExitCode = { val: 1 };
         const outputBuffer: string[] = [];
         const imports = defineImports(outputBuffer, exitCode, stdoutPrint);
-        let startExecution = 0;
-        let endExecution = 0;
+        let startExecution: number | null = null;
+        let endExecution: number | null = null;
         const printResults = (): void => {
+            if (startExecution === null || endExecution === null) {
+                return;
+            }
             const executionDuration = endExecution - startExecution;
             const compilationDuration = sessionStorage.getItem("duration_compile");
             outputBuffer.push(`\nCompilation time: ${compilationDuration} ms`);
@@ -282,23 +285,32 @@ async function setupLFortranFunctions(
         };
 
         try {
-            const instance = await WebAssembly.instantiate(bytes, imports);
+            const result = await WebAssembly.instantiate(bytes, imports);
+            const instance = (result as unknown as { instance: WebAssembly.Instance }).instance;
             const exports = instance.exports as WebAssembly.Exports & {
-                memory: WebAssembly.Memory;
-                _start: () => void;
+                memory?: WebAssembly.Memory;
+                _start?: () => void;
             };
+            if (!(exports.memory instanceof WebAssembly.Memory)) {
+                throw new Error("The compiled WebAssembly module does not export memory");
+            }
+            if (typeof exports._start !== "function") {
+                throw new Error("The compiled WebAssembly module does not export _start");
+            }
             memory = exports.memory;
             startExecution = performance.now();
             exports._start();
             endExecution = performance.now();
             printResults();
         } catch (error: unknown) {
-            endExecution = performance.now();
+            if (startExecution !== null && endExecution === null) {
+                endExecution = performance.now();
+            }
             printResults();
             if (exitCode.val === 0) {
                 return;
             }
-            console.log(error);
+            console.error("WebAssembly execution failed:", error);
             stdoutPrint(
                 `\n${String(error)}\nERROR: The code could not be executed. Either there is a runtime error or there is an issue at our end.`,
             );
