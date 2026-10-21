@@ -1,6 +1,6 @@
 "use client";
 
-import TextBox from "../components/TextBox";
+import TextBox, { type SourceFile } from "../components/TextBox";
 import ResultBox from "../components/ResultBox";
 import LoadLFortran, { type LFortranFunctions, type NotificationCallback } from "../components/LoadLFortran";
 import preinstalled_programs from "../utils/preinstalled_programs";
@@ -43,8 +43,53 @@ const lfortran_funcs: LFortranFunctions = {
 
 export default function Home() {
     const [moduleReady, setModuleReady] = useState(false);
-    const [sourceCode, setSourceCode] = useState("");
-    const [exampleName, setExampleName] = useState("main");
+    const [files, setFiles] = useState<SourceFile[]>([{ id: "file-0", name: "main.f90", code: "" }]);
+    const [activeFileId, setActiveFileId] = useState("file-0");
+    const nextFileId = useRef(1);
+    const activeFile = files.find((file) => file.id === activeFileId) ?? files[0];
+    const sourceCode = activeFile.code;
+
+    const setSourceCode = useCallback((code: string) => {
+        setFiles((current) => current.map((file) =>
+            file.id === activeFileId ? { ...file, code } : file
+        ));
+    }, [activeFileId]);
+
+    // URL and default sources always populate the initial file, even if a fetch finishes after a tab switch.
+    const setInitialSourceCode = useCallback((code: string) => {
+        setFiles((current) => current.map((file) =>
+            file.id === "file-0" ? { ...file, code } : file
+        ));
+    }, []);
+
+    const addFile = () => {
+        const id = `file-${nextFileId.current++}`;
+        let index = 1;
+        while (files.some((file) => file.name.toLowerCase() === `untitled-${index}.f90`)) index++;
+        setFiles((current) => [...current, { id, name: `untitled-${index}.f90`, code: "" }]);
+        setActiveFileId(id);
+        setOutput("");
+    };
+
+    const selectFile = (id: string) => {
+        setActiveFileId(id);
+        setOutput("");
+    };
+
+    const removeFile = (id: string) => {
+        if (files.length === 1) return;
+        const index = files.findIndex((file) => file.id === id);
+        const remaining = files.filter((file) => file.id !== id);
+        setFiles(remaining);
+        if (activeFileId === id) {
+            setActiveFileId(remaining[Math.min(index, remaining.length - 1)].id);
+            setOutput("");
+        }
+    };
+
+    const renameFile = (id: string, name: string) => {
+        setFiles((current) => current.map((file) => file.id === id ? { ...file, name } : file));
+    };
     const [activeTab, setActiveTab] = useState("STDOUT");
     const [output, setOutput] = useState("");
     const [dataFetch, setDataFetch] = useState(false);
@@ -62,14 +107,14 @@ export default function Home() {
 
         const code = urlParams.get("code");
         if (code) {
-            setSourceCode(decodeURIComponent(code));
+            setInitialSourceCode(decodeURIComponent(code));
             setDataFetch(true);
         } else if (urlParams.get("github")) {
             const rawUrl = github + urlParams.get("github");
             fetch(rawUrl, {cache: "no-store"})
                 .then((response) => response.text())
                 .then((data) => {
-                    setSourceCode(data);
+                    setInitialSourceCode(data);
                     setDataFetch(true);
                     openNotification(
                         "Source Code loaded from git.",
@@ -85,7 +130,7 @@ export default function Home() {
             fetch(gistUrl, {cache: "no-store"})
                 .then((response) => response.text())
                 .then((data) => {
-                    setSourceCode(data);
+                    setInitialSourceCode(data);
                     setDataFetch(true);
                     openNotification(
                         "Source Code loaded from gist.",
@@ -97,13 +142,13 @@ export default function Home() {
                     openNotification("error fetching .", "bottomRight");
                 });
         } else {
-            setSourceCode(preinstalled_programs.basic.mandelbrot);
+            setInitialSourceCode(preinstalled_programs.basic.mandelbrot);
             setDataFetch(true);
             if(urlParams.size>0){
                 openNotification("The URL contains an invalid parameter.", "bottomRight");
             }
         }
-    }, []);
+    }, [setInitialSourceCode]);
 
     const handleUserTabChange = useCallback(async (key: string) => {
         if (key == "STDOUT") {
@@ -187,10 +232,13 @@ export default function Home() {
                 <Col xs={{ span: 24 }} sm={{ span: 24 }} md={{ span: 12 }}>
                     <TextBox
                         disabled={!moduleReady}
-                        sourceCode={sourceCode}
+                        files={files}
+                        activeFileId={activeFileId}
                         setSourceCode={setSourceCode}
-                        exampleName={exampleName}
-                        setExampleName={setExampleName}
+                        onAddFile={addFile}
+                        onSelectFile={selectFile}
+                        onRemoveFile={removeFile}
+                        onRenameFile={renameFile}
                         activeTab={activeTab}
                         handleUserTabChange={handleUserTabChange}
                         myHeight={myHeight}

@@ -1,6 +1,5 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
 import AceEditor from "react-ace";
 
 import "ace-builds/src-noconflict/mode-java";
@@ -11,7 +10,7 @@ import "ace-builds/src-noconflict/ext-language_tools";
 
 interface EditorProps {
     sourceCode: string;
-    setSourceCode: Dispatch<SetStateAction<string>>;
+    setSourceCode: (code: string) => void;
 }
 
 function Editor({ sourceCode, setSourceCode }: EditorProps) {

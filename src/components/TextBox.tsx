@@ -1,29 +1,51 @@
 "use client";
 
-import { Button, Tabs, Dropdown, Space, type MenuProps } from "antd";
-import { DownOutlined, PlayCircleOutlined,FullscreenOutlined,FullscreenExitOutlined} from "@ant-design/icons";
+import { Button, Tabs, Dropdown, Space, Input, Modal, type MenuProps } from "antd";
+import { DownOutlined, PlayCircleOutlined, FullscreenOutlined, FullscreenExitOutlined, EditOutlined } from "@ant-design/icons";
 import { useIsMobile } from "./useIsMobile";
-import { useState, useEffect, type Dispatch, type SetStateAction, type MouseEvent } from "react";
+import { useState, useEffect, type MouseEvent } from "react";
 import preinstalled_programs from "../utils/preinstalled_programs";
 import dynamic from 'next/dynamic'
 const Editor = dynamic(() => import('./Editor'), {
   ssr: false
 })
 
+export interface SourceFile {
+    id: string;
+    name: string;
+    code: string;
+}
+
 interface TextBoxProps {
     disabled: boolean;
-    sourceCode: string;
-    setSourceCode: Dispatch<SetStateAction<string>>;
-    exampleName: string;
-    setExampleName: Dispatch<SetStateAction<string>>;
+    files: SourceFile[];
+    activeFileId: string;
+    setSourceCode: (code: string) => void;
+    onAddFile: () => void;
+    onSelectFile: (id: string) => void;
+    onRemoveFile: (id: string) => void;
+    onRenameFile: (id: string, name: string) => void;
     activeTab: string;
     handleUserTabChange: (key: string) => Promise<void>;
     myHeight: string;
 }
 
-function TextBox({ disabled, sourceCode, setSourceCode, exampleName, setExampleName, activeTab, handleUserTabChange, myHeight }: TextBoxProps) {
+function TextBox({ disabled, files, activeFileId, setSourceCode, onAddFile, onSelectFile, onRemoveFile, onRenameFile, activeTab, handleUserTabChange, myHeight }: TextBoxProps) {
     const isMobile = useIsMobile(); 
     const [isFullScreen, setIsFullScreen] = useState(false);
+    const [renaming, setRenaming] = useState(false);
+    const [fileName, setFileName] = useState("");
+    const activeFile = files.find((file) => file.id === activeFileId) ?? files[0];
+    const normalizedName = fileName.trim();
+    const nameError = !normalizedName ? "Enter a file name" :
+        /[\\/]/.test(normalizedName) ? "File names cannot contain slashes" :
+        files.some((file) => file.id !== activeFileId && file.name.toLowerCase() === normalizedName.toLowerCase()) ? "A file with this name already exists" : "";
+
+    const saveName = () => {
+        if (nameError) return;
+        onRenameFile(activeFileId, normalizedName);
+        setRenaming(false);
+    };
 
     // Listen for fullscreen changes (Esc key, browser buttons, etc.)
     useEffect(() => {
@@ -49,7 +71,12 @@ function TextBox({ disabled, sourceCode, setSourceCode, exampleName, setExampleN
                 label: example,
                 onClick: () => {
                     setSourceCode(preinstalled_programs[category][example as keyof (typeof preinstalled_programs)[typeof category]]);
-                    setExampleName(example);
+                    let name = `${example}.f90`;
+                    let suffix = 2;
+                    while (files.some((file) => file.id !== activeFileId && file.name.toLowerCase() === name.toLowerCase())) {
+                        name = `${example}-${suffix++}.f90`;
+                    }
+                    onRenameFile(activeFileId, name);
                 }
             });
         }
@@ -72,12 +99,19 @@ function TextBox({ disabled, sourceCode, setSourceCode, exampleName, setExampleN
                     {/* Now both text options only show on desktop, keeping mobile clean */}
                     {!isMobile && (isFullScreen ? " Exit Fullscreen" : " Fullscreen")}
                 </Button>
+                <Button
+                    title="Rename active file"
+                    aria-label="Rename active file"
+                    onClick={() => { setFileName(activeFile.name); setRenaming(true); }}
+                    icon={<EditOutlined />}
+                />
                 <Button 
                     disabled={disabled} 
                     onClick={() => handleUserTabChange(activeTab)}
                     icon={<PlayCircleOutlined />}
+                    title="Run the active file only"
                 > 
-                    Run 
+                    {isMobile ? "Run" : "Run active file"}
                 </Button>
             </Space>
         ),
@@ -92,28 +126,49 @@ function TextBox({ disabled, sourceCode, setSourceCode, exampleName, setExampleN
         )
     };
 
-    const tabItems = [
-        {
-            key: '1',
-            label: `${exampleName}.f90`,
-            children: (
-                <div style={{ height: myHeight }}>
-                    <Editor
-                        sourceCode={sourceCode}
-                        setSourceCode={setSourceCode}
-                    />
-                </div>
-            ),
-        },
-    ];
+    const tabItems = files.map((file) => ({
+        key: file.id,
+        label: file.name,
+        closable: files.length > 1,
+        children: file.id === activeFileId ? (
+            <div style={{ height: myHeight }}>
+                <Editor key={file.id} sourceCode={file.code} setSourceCode={setSourceCode} />
+            </div>
+        ) : null,
+    }));
 
     return (
         <div className="card-container" style={{height: "100%" }}>
-            <Tabs 
-                tabBarExtraContent={extraOperations} 
-                style={{ height: "100%" }} 
-                items={tabItems} 
+            <Tabs
+                type="editable-card"
+                activeKey={activeFileId}
+                onChange={onSelectFile}
+                onEdit={(target, action) => {
+                    if (action === "add") onAddFile();
+                    else onRemoveFile(String(target));
+                }}
+                tabBarExtraContent={extraOperations}
+                style={{ height: "100%" }}
+                items={tabItems}
             />
+            <Modal
+                title="Rename file"
+                open={renaming}
+                onOk={saveName}
+                okButtonProps={{ disabled: !!nameError }}
+                onCancel={() => setRenaming(false)}
+                destroyOnHidden
+            >
+                <Input
+                    autoFocus
+                    aria-label="File name"
+                    value={fileName}
+                    onChange={(event) => setFileName(event.target.value)}
+                    onPressEnter={saveName}
+                    status={nameError ? "error" : undefined}
+                />
+                {nameError && <div role="alert" style={{ color: "#cf1322" }}>{nameError}</div>}
+            </Modal>
         </div>
     );
 }
